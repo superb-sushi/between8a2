@@ -3,33 +3,41 @@
 import { useScreenSize}  from "@/hooks/use-screen-size"
 import { PixelTrail } from "@/components/ui/pixel-trail"
 import { GooeyFilter } from "@/components/ui/gooey-filter"
-import mendobg from "@/public/mendobg.jpg"
+import { getRandomBackground } from "@/lib/utils"
 import Image from 'next/image'
+import { useState, useEffect } from 'react'
 
 function GooeyPage() {
   const screenSize = useScreenSize()
+  const [bg, setBg] = useState<any>(null)
+
+  useEffect(() => {
+    setBg(getRandomBackground())
+  }, [])
+
+  if (!bg) return null
 
   return (
     <div className="relative w-full h-full gap-8 bg-black text-center text-pretty">
       <Image
-        src={mendobg}
+        src={bg}
         alt="impressionist painting"
-        className="w-full h-full object-cover absolute inset-0 opacity-70"
+        className="w-full h-full object-cover absolute inset-0 opacity-60"
       />
 
-      {/* <GooeyFilter id="gooey-filter-pixel-trail" strength={5} />
+      <GooeyFilter id="gooey-filter-pixel-trail" strength={4} />
 
       <div
         className="absolute inset-0 z-0"
         style={{ filter: "url(#gooey-filter-pixel-trail)" }}
       >
         <PixelTrail
-          pixelSize={screenSize.lessThan(`md`) ? 32 : 48}
-          fadeDuration={1000}
-          delay={25000}
+          pixelSize={screenSize.lessThan(`md`) ? 24 : 38}
+          fadeDuration={300}
+          delay={1300}
           pixelClassName="bg-white"
         />
-      </div> */}
+      </div>
     </div>
   )
 }

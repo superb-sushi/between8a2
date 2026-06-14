@@ -39,8 +39,11 @@ export function AdminLoginModal({
         return;
       }
 
-      // Store token in localStorage
+      // Store token and username in localStorage
       localStorage.setItem("adminToken", data.token);
+      if (data.username) {
+        localStorage.setItem("adminUsername", data.username);
+      }
       onLoginSuccess();
       setUsername("");
       setPassword("");

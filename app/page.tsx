@@ -30,6 +30,7 @@ export default function Home() {
   const questionPositions = useRef<Record<string, { top: number; left: number }>>({});
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminUsername, setAdminUsername] = useState<string | null>(null);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [sessionTitle, setSessionTitle] = useState("");
@@ -51,8 +52,10 @@ export default function Home() {
 
     // Check if already logged in
     const token = localStorage.getItem("adminToken");
+    const storedAdmin = localStorage.getItem("adminUsername");
     if (token) {
       setIsAdmin(true);
+      if (storedAdmin) setAdminUsername(storedAdmin);
     }
   }, []);
 
@@ -74,11 +77,15 @@ export default function Home() {
   const handleLoginSuccess = () => {
     setIsAdmin(true);
     setLoginModalOpen(false);
+    const uname = localStorage.getItem("adminUsername");
+    if (uname) setAdminUsername(uname);
   };
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUsername");
     setIsAdmin(false);
+    setAdminUsername(null);
   };
 
   const handleAnswerAdded = (questionId: string, answer: { id: string; content: string; questionId: string; createdAt: Date; updatedAt: Date }) => {
@@ -203,7 +210,7 @@ export default function Home() {
       {isAdmin && (
         <div className="absolute top-6 right-6 z-40 flex items-center gap-2 rounded-full border border-green-500/20 bg-black/75 px-3 py-2 text-white shadow-lg">
           <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
-          <span className="text-xs uppercase tracking-[0.18em] text-emerald-300">Admin</span>
+          <span className="text-sm tracking-[0.15em] font-bold text-emerald-300">{adminUsername ?? "Admin"}</span>
           <button
             type="button"
             onClick={() => setCreateAdminOpen(true)}
