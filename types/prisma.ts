@@ -1,4 +1,4 @@
-import { Prisma } from "@/app/generated/prisma/client";
+import type { Session, Question, Answer, Admin, Prisma } from "@prisma/client";
 
 /**
  * =========================
@@ -6,67 +6,55 @@ import { Prisma } from "@/app/generated/prisma/client";
  * =========================
  */
 
-export type Session = Prisma.SessionGetPayload<{}>;
+/**
+ * Base session model
+ */
+export type SessionModel = Session;
 
 /**
  * Session with all questions (no nested answers)
  */
-export type SessionWithQuestions = Prisma.SessionGetPayload<{
-  include: {
-    questions: true;
-  };
-}>;
+export type SessionWithQuestions = Session & {
+  questions: Question[];
+};
 
 /**
- * Session with questions + answers (FULL UI GRAPH — most useful)
+ * Answer with admin attached
  */
-export type SessionFull = Prisma.SessionGetPayload<{
-  include: {
-    questions: {
-      include: {
-        answers: {
-          include: {
-            admin: {
-              select: {
-                id: true;
-                username: true;
-              };
-            };
-          };
-        };
-      };
-    };
-  };
-}>;
+export type AnswerWithAdmin = Answer & {
+  admin: Pick<Admin, "id" | "username">;
+};
+
+/**
+ * Question with answers + admin
+ */
+export type QuestionWithAnswers = Question & {
+  answers: AnswerWithAdmin[];
+};
+
+/**
+ * Session with questions + answers (FULL UI GRAPH)
+ */
+export type SessionFull = Session & {
+  questions: QuestionWithAnswers[];
+};
 
 /**
  * Lightweight session for dashboards / lists
  */
-export type SessionPreview = Prisma.SessionGetPayload<{
-  select: {
-    id: true;
-    title: true;
-    description: true;
-    createdAt: true;
-  };
-}>;
+export type SessionPreview = Pick<
+  Session,
+  "id" | "title" | "description" | "createdAt"
+>;
 
 /**
  * Session with counts only (useful for sidebar / cards)
  */
-export type SessionWithCounts = Prisma.SessionGetPayload<{
-  select: {
-    id: true;
-    title: true;
-    description: true;
-    _count: {
-      select: {
-        questions: true;
-      };
-    };
-    createdAt: true;
+export type SessionWithCounts = Session & {
+  _count: {
+    questions: number;
   };
-}>;
+};
 
 /**
  * =========================
@@ -74,29 +62,26 @@ export type SessionWithCounts = Prisma.SessionGetPayload<{
  * =========================
  */
 
-// Base Question model (no relations)
-export type Question = Prisma.QuestionGetPayload<{}>;
+/**
+ * Base Question model (no relations)
+ */
+export type QuestionModel = Question;
 
-// Question with answers included
-export type QuestionWithAnswers = Prisma.QuestionGetPayload<{
-  include: { answers: { include: { admin: { select: { id: true; username: true } } } } };
-}>;
-
-// Question without answers (explicit safe version)
+/**
+ * Question without answers (explicit safe version)
+ */
 export type QuestionCore = Pick<
   Question,
   "id" | "title" | "question" | "isAnswered" | "createdAt" | "updatedAt"
 >;
 
-// Lightweight preview (for cards / lists)
-export type QuestionPreview = Prisma.QuestionGetPayload<{
-  select: {
-    id: true;
-    title: true;
-    question: true;
-    isAnswered: true;
-  };
-}>;
+/**
+ * Lightweight preview (for cards / lists)
+ */
+export type QuestionPreview = Pick<
+  Question,
+  "id" | "title" | "question" | "isAnswered"
+>;
 
 /**
  * =========================
@@ -104,13 +89,10 @@ export type QuestionPreview = Prisma.QuestionGetPayload<{
  * =========================
  */
 
-export type Answer = Prisma.AnswerGetPayload<{ include: { admin: { select: { id: true; username: true } } } }>;
-
-// If ever extended later (safe pattern)
-export type AnswerCore = Pick<
-  Answer,
-  "id" | "content" | "questionId" | "createdAt" | "updatedAt"
->;
+/**
+ * Base Answer model
+ */
+export type AnswerModel = Answer;
 
 /**
  * =========================
@@ -118,8 +100,14 @@ export type AnswerCore = Pick<
  * =========================
  */
 
-export type Admin = Prisma.AdminGetPayload<{}>;
+/**
+ * Base admin model
+ */
+export type AdminModel = Admin;
 
+/**
+ * Safe admin (no password)
+ */
 export type AdminSafe = Omit<Admin, "password">;
 
 /**
@@ -128,10 +116,8 @@ export type AdminSafe = Omit<Admin, "password">;
  * =========================
  */
 
-// Your main API response for /get-questions
 export type GetQuestionsResponse = QuestionWithAnswers[];
 
-// Single question API response
 export type GetQuestionResponse = QuestionWithAnswers | null;
 
 /**
@@ -145,14 +131,14 @@ export type QuestionCardProps = {
   title: string;
   description: string;
   isAnswered: boolean;
-  answers?: Answer[];
+  answers?: AnswerWithAdmin[];
   top: number;
   left: number;
 };
 
 /**
  * =========================
- * FORM TYPES (future-proof)
+ * FORM TYPES
  * =========================
  */
 
