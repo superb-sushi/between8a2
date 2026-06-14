@@ -1,4 +1,72 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/app/generated/prisma/client";
+
+/**
+ * =========================
+ * SESSION TYPES
+ * =========================
+ */
+
+export type Session = Prisma.SessionGetPayload<{}>;
+
+/**
+ * Session with all questions (no nested answers)
+ */
+export type SessionWithQuestions = Prisma.SessionGetPayload<{
+  include: {
+    questions: true;
+  };
+}>;
+
+/**
+ * Session with questions + answers (FULL UI GRAPH — most useful)
+ */
+export type SessionFull = Prisma.SessionGetPayload<{
+  include: {
+    questions: {
+      include: {
+        answers: {
+          include: {
+            admin: {
+              select: {
+                id: true;
+                username: true;
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+}>;
+
+/**
+ * Lightweight session for dashboards / lists
+ */
+export type SessionPreview = Prisma.SessionGetPayload<{
+  select: {
+    id: true;
+    title: true;
+    description: true;
+    createdAt: true;
+  };
+}>;
+
+/**
+ * Session with counts only (useful for sidebar / cards)
+ */
+export type SessionWithCounts = Prisma.SessionGetPayload<{
+  select: {
+    id: true;
+    title: true;
+    description: true;
+    _count: {
+      select: {
+        questions: true;
+      };
+    };
+    createdAt: true;
+  };
+}>;
 
 /**
  * =========================
@@ -11,7 +79,7 @@ export type Question = Prisma.QuestionGetPayload<{}>;
 
 // Question with answers included
 export type QuestionWithAnswers = Prisma.QuestionGetPayload<{
-  include: { answers: true };
+  include: { answers: { include: { admin: { select: { id: true; username: true } } } } };
 }>;
 
 // Question without answers (explicit safe version)
@@ -36,7 +104,7 @@ export type QuestionPreview = Prisma.QuestionGetPayload<{
  * =========================
  */
 
-export type Answer = Prisma.AnswerGetPayload<{}>;
+export type Answer = Prisma.AnswerGetPayload<{ include: { admin: { select: { id: true; username: true } } } }>;
 
 // If ever extended later (safe pattern)
 export type AnswerCore = Pick<

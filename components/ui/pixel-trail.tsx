@@ -22,8 +22,8 @@ const PixelTrail: React.FC<PixelTrailProps> = ({
   className,
   pixelClassName,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const dimensions = useDimensions(containerRef)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const dimensions = useDimensions(containerRef as unknown as React.RefObject<HTMLElement | SVGElement>)
   const trailId = useRef(uuidv4())
 
   const handleMouseMove = useCallback(

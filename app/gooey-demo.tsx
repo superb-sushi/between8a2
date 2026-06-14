@@ -25,8 +25,8 @@ function GooeyPage() {
       >
         <PixelTrail
           pixelSize={screenSize.lessThan(`md`) ? 32 : 48}
-          fadeDuration={7500}
-          delay={500}
+          fadeDuration={5000}
+          delay={30000}
           pixelClassName="bg-white"
         />
       </div>

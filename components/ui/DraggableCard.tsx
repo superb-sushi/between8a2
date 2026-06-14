@@ -9,7 +9,7 @@ interface DraggableCardProps {
   onDragEnd?: (id: string, x: number, y: number) => void;
   className?: string;
   style?: CSSProperties;
-  dragConstraintsRef?: React.RefObject<HTMLElement>;
+  dragConstraintsRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function DraggableCard({
@@ -49,7 +49,6 @@ export function DraggableCard({
     window.addEventListener("resize", updateConstraints);
     return () => window.removeEventListener("resize", updateConstraints);
   }, [dragConstraintsRef]);
-
   return (
     <motion.div
       ref={ref}

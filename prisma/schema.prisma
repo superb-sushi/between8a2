@@ -40,16 +40,22 @@ model Answer {
   questionId String
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
+  adminId String
+  admin   Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([questionId])
+  @@index([adminId])
 }
 
 model Admin {
   id       String @id @default(cuid())
   username String @unique
   password String // store hashed password (bcrypt/argon2 only)
+
+  answers  Answer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
+import bcrypt from "bcrypt";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -14,12 +15,11 @@ const prisma = new PrismaClient({
 // SEED DATA
 // ------------------------
 
-const adminData: Prisma.AdminCreateInput = {
+const adminDataBase = {
   username: "admin",
-  password: "hashed-password-here",
 };
 
-const questionData = [
+const session1Questions = [
   {
     title: "Why does God allow suffering?",
     question: "I’ve always wondered why suffering exists if God is good.",
@@ -35,6 +35,9 @@ const questionData = [
     question: "How do we know if God is speaking to us now?",
     isAnswered: true,
   },
+];
+
+const session2Questions = [
   {
     title: "What is faith?",
     question: "I don’t fully understand what faith really means.",
@@ -52,94 +55,134 @@ const questionData = [
 // ------------------------
 
 export async function main() {
-  // 1. ADMIN (ONLY ONE)
-  const admin = await prisma.admin.create({
-    data: adminData,
+  const hashedPassword = await bcrypt.hash("admin123", 10);
+
+  const adminData: Prisma.AdminCreateInput = {
+    ...adminDataBase,
+    password: hashedPassword,
+  };
+
+  // 1. ADMIN (upsert safe)
+  const admin = await prisma.admin.upsert({
+    where: { username: "admin" },
+    update: {
+      password: hashedPassword,
+    },
+    create: adminData,
   });
 
-  console.log("Admin created:", admin.username);
+  console.log("Admin ready:", admin.username);
 
-  // 2. SESSION
-  const session = await prisma.session.create({
+  // 2. SESSIONS
+  const session1 = await prisma.session.create({
     data: {
-      title: "Default Session",
-      description: "Seeded Q&A session",
+      title: "Foundations of Faith",
+      description: "Session exploring core theological questions",
     },
   });
 
-  console.log("Session created:", session.id);
+  const session2 = await prisma.session.create({
+    data: {
+      title: "Faith in Practice",
+      description: "Session about living out faith daily",
+    },
+  });
 
-  // 3. QUESTIONS (ATTACHED TO SESSION)
-  const questions: any[] = [];
+  console.log("Sessions created");
 
-  for (const q of questionData) {
+  // 3. QUESTIONS SESSION 1
+  const questionsSession1 = [];
+
+  for (const q of session1Questions) {
     const created = await prisma.question.create({
       data: {
         ...q,
-        sessionId: session.id,
+        sessionId: session1.id,
       },
     });
 
-    questions.push(created);
+    questionsSession1.push(created);
   }
 
-  console.log("Questions created:", questions.length);
+  // 4. QUESTIONS SESSION 2
+  const questionsSession2 = [];
 
-  // ------------------------
-  // 4. ANSWERS
-  // ------------------------
+  for (const q of session2Questions) {
+    const created = await prisma.question.create({
+      data: {
+        ...q,
+        sessionId: session2.id,
+      },
+    });
 
-  // Question 1 → 3 answers
+    questionsSession2.push(created);
+  }
+
+  console.log("Questions created");
+
+  // 5. ANSWERS SESSION 1 (ALL include adminId)
+
   await prisma.answer.createMany({
     data: [
       {
         content:
           "Suffering may exist in a fallen world while still allowing free will.",
-        questionId: questions[0].id,
+        questionId: questionsSession1[0].id,
+        adminId: admin.id,
       },
       {
         content:
           "It can also shape character and deepen dependence on God.",
-        questionId: questions[0].id,
+        questionId: questionsSession1[0].id,
+        adminId: admin.id,
       },
       {
         content:
           "Biblical figures like Job also experienced deep suffering.",
-        questionId: questions[0].id,
+        questionId: questionsSession1[0].id,
+        adminId: admin.id,
       },
-    ],
-  });
-
-  // Question 2 → 3 answers
-  await prisma.answer.createMany({
-    data: [
       {
         content: "Prayer is about relationship, not strict rules.",
-        questionId: questions[1].id,
+        questionId: questionsSession1[1].id,
+        adminId: admin.id,
       },
       {
         content:
           "You can pray honestly and openly—God values sincerity.",
-        questionId: questions[1].id,
+        questionId: questionsSession1[1].id,
+        adminId: admin.id,
       },
       {
         content:
           "Many people use ACTS (Adoration, Confession, Thanksgiving, Supplication).",
-        questionId: questions[1].id,
+        questionId: questionsSession1[1].id,
+        adminId: admin.id,
       },
     ],
   });
 
-  // Question 3 → 1 answer
   await prisma.answer.create({
     data: {
       content:
         "Many believe God speaks through Scripture, conviction, and circumstances.",
-      questionId: questions[2].id,
+      questionId: questionsSession1[2].id,
+      adminId: admin.id,
+    },
+  });
+
+  // 6. ANSWERS SESSION 2
+  await prisma.answer.create({
+    data: {
+      content:
+        "Faith is trusting God even when you cannot see the full picture.",
+      questionId: questionsSession2[0].id,
+      adminId: admin.id,
     },
   });
 
   console.log("Answers created");
+  console.log("Seeding complete 🚀");
 }
 
 // ------------------------
