@@ -3,19 +3,23 @@
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DraggableCard } from "@/components/ui/DraggableCard";
-import { Answer } from "@/types/prisma";
+import type { Answer, Admin } from "@prisma/client";
+
+type AnswerWithAdmin = Answer & {
+  admin: Pick<Admin, "id" | "username"> | null;
+};
 
 interface QuestionCardProps {
   id: string;
   title: string;
   description?: string;
-  answers: Answer[];
+  answers: AnswerWithAdmin[];
   top?: number;
   left?: number;
   isAnswered: boolean;
   dragConstraintsRef?: React.RefObject<HTMLDivElement | null>;
   isAdmin: boolean;
-  onAnswerAdded: (questionId: string, answer: Answer) => void;
+  onAnswerAdded: (questionId: string, answer: AnswerWithAdmin) => void;
 }
 
 const QuestionCard = ({
