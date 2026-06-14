@@ -18,10 +18,32 @@ import {
 } from "@/components/ui/combobox"
 import { Plus, X } from "lucide-react";
 
-const getRandomPosition = () => ({
-  top: 40 + Math.floor(Math.random() * 520),
-  left: 24 + Math.floor(Math.random() * 920),
-})
+const getRandomPosition = (container?: HTMLDivElement | null) => {
+  const marginLeft = 24;
+  const minTop = 40;
+  const cardMinWidth = 320; // match desktop card width (20rem)
+  const cardMinHeight = 120; // approximate minimum height of a question card
+
+  if (container) {
+    const rect = container.getBoundingClientRect();
+    const maxTop = Math.max(rect.height - cardMinHeight - 8, minTop);
+    const maxLeft = Math.max(rect.width - cardMinWidth - 8, marginLeft);
+
+    const top = minTop + Math.floor(Math.random() * Math.max(1, maxTop - minTop + 1));
+    const left = marginLeft + Math.floor(Math.random() * Math.max(1, maxLeft - marginLeft + 1));
+
+    return { top, left };
+  }
+
+  // Fallback to viewport-based positioning
+  const vw = typeof window !== "undefined" ? window.innerWidth : 960;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 600;
+
+  return {
+    top: minTop + Math.floor(Math.random() * Math.max(1, Math.floor(vh - cardMinHeight - minTop))),
+    left: marginLeft + Math.floor(Math.random() * Math.max(1, Math.floor(vw - cardMinWidth - marginLeft))),
+  };
+}
 
 export default function Home() {
   const dragContainerRef = useRef<HTMLDivElement | null>(null);
@@ -190,6 +212,41 @@ export default function Home() {
       setCreatingSession(false);
     }
   };
+
+  // Keep existing question positions inside the container on resize
+  useEffect(() => {
+    const clampPositions = () => {
+      const container = dragContainerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const cardMinWidth = 320;
+      const cardMinHeight = 120;
+      const minTop = 40;
+      const marginLeft = 24;
+
+      Object.keys(questionPositions.current).forEach((id) => {
+        const pos = questionPositions.current[id];
+        if (!pos) return;
+
+        const maxTop = Math.max(rect.height - cardMinHeight - 8, minTop);
+        const maxLeft = Math.max(rect.width - cardMinWidth - 8, marginLeft);
+
+        const clampedTop = Math.min(Math.max(pos.top, minTop), maxTop);
+        const clampedLeft = Math.min(Math.max(pos.left, marginLeft), maxLeft);
+
+        if (clampedTop !== pos.top || clampedLeft !== pos.left) {
+          questionPositions.current[id] = { top: clampedTop, left: clampedLeft };
+        }
+      });
+    };
+
+    window.addEventListener("resize", clampPositions);
+    // also run once on mount
+    clampPositions();
+
+    return () => window.removeEventListener("resize", clampPositions);
+  }, []);
 
   return (
     <div ref={dragContainerRef} className="relative min-h-screen">
@@ -449,7 +506,7 @@ export default function Home() {
       {/* QUESTIONS FROM ACTIVE SESSION */}
       <div>
         {activeSession?.questions?.map((q) => {
-          const position = questionPositions.current[q.id] ?? getRandomPosition();
+          const position = questionPositions.current[q.id] ?? getRandomPosition(dragContainerRef.current);
 
           if (!questionPositions.current[q.id]) {
             questionPositions.current[q.id] = position;

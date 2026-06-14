@@ -96,7 +96,7 @@ const QuestionCard = ({
         transition={{ type: "spring", stiffness: 240, damping: 22 }}
         onClick={handleCardClick}
         whileHover={{ scale: 1.01 }}
-        className={`relative max-h-[700px] w-80 cursor-pointer overflow-hidden rounded-[2rem] border p-5 text-left backdrop-blur-md transition-colors duration-300 ${
+        className={`relative max-h-[700px] w-[min(92vw,20rem)] sm:w-80 cursor-pointer overflow-hidden rounded-[2rem] border p-5 text-left backdrop-blur-md transition-colors duration-300 ${
           isAnswered
             ? "border-white/10 bg-white/90 text-zinc-900 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.25)]"
             : "border-white/10 bg-black/90 text-white shadow-[0_20px_60px_-40px_rgba(0,0,0,0.45)]"

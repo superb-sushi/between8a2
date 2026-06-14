@@ -18,11 +18,12 @@ function GooeyPage() {
   if (!bg) return null
 
   return (
-    <div className="relative w-full h-full gap-8 bg-black text-center text-pretty">
+    <div className="fixed inset-0 z-0 w-full h-full bg-black text-center text-pretty">
       <Image
         src={bg}
         alt="impressionist painting"
-        className="w-full h-full object-cover absolute inset-0 opacity-60"
+        fill
+        className="object-cover opacity-60"
       />
 
       <GooeyFilter id="gooey-filter-pixel-trail" strength={4} />
