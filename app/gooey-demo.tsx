@@ -17,7 +17,7 @@ function GooeyPage() {
         className="w-full h-full object-cover absolute inset-0 opacity-70"
       />
 
-      <GooeyFilter id="gooey-filter-pixel-trail" strength={5} />
+      {/* <GooeyFilter id="gooey-filter-pixel-trail" strength={5} />
 
       <div
         className="absolute inset-0 z-0"
@@ -25,12 +25,11 @@ function GooeyPage() {
       >
         <PixelTrail
           pixelSize={screenSize.lessThan(`md`) ? 32 : 48}
-          fadeDuration={5000}
-          delay={30000}
+          fadeDuration={1000}
+          delay={25000}
           pixelClassName="bg-white"
         />
-      </div>
-      <div>Hi!</div>
+      </div> */}
     </div>
   )
 }

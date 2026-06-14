@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import GooeyPage from "./gooey-demo"
 import QuestionCard from "@/components/ui/QuestionCard"
 import { AdminLoginModal } from "@/components/ui/AdminLoginModal"
@@ -15,6 +16,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
+import { Plus, X } from "lucide-react";
 
 const getRandomPosition = () => ({
   top: 40 + Math.floor(Math.random() * 520),
@@ -25,9 +27,20 @@ export default function Home() {
   const dragContainerRef = useRef<HTMLDivElement | null>(null);
   const [sessions, setSessions] = useState<SessionFull[]>([]);
   const [activeSession, setActiveSession] = useState<SessionFull>();
+  const questionPositions = useRef<Record<string, { top: number; left: number }>>({});
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
+  const [sessionModalOpen, setSessionModalOpen] = useState(false);
+  const [sessionTitle, setSessionTitle] = useState("");
+  const [sessionDescription, setSessionDescription] = useState("");
+  const [creatingSession, setCreatingSession] = useState(false);
+  const [sessionError, setSessionError] = useState("");
+  const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [questionTitle, setQuestionTitle] = useState("");
+  const [questionText, setQuestionText] = useState("");
+  const [creatingQuestion, setCreatingQuestion] = useState(false);
+  const [questionError, setQuestionError] = useState("");
 
   useEffect(() => {
     fetch("/api/get-sessions")
@@ -87,6 +100,90 @@ export default function Home() {
     });
   };
 
+  const handleCreateQuestion = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!activeSession) return;
+    if (!questionTitle.trim() || !questionText.trim()) {
+      setQuestionError("Please add both a title and question.");
+      return;
+    }
+
+    setCreatingQuestion(true);
+    setQuestionError("");
+
+    try {
+      const response = await fetch("/api/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: activeSession.id,
+          title: questionTitle.trim(),
+          question: questionText.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setQuestionError(data?.error || "Unable to submit question.");
+        return;
+      }
+
+      setActiveSession((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          questions: [...current.questions, data.question],
+        } as SessionFull;
+      });
+
+      setQuestionTitle("");
+      setQuestionText("");
+    } catch (error) {
+      setQuestionError("Unable to submit question.");
+    } finally {
+      setCreatingQuestion(false);
+    }
+  };
+
+  const handleCreateSession = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!sessionTitle.trim()) {
+      setSessionError("Session title is required.");
+      return;
+    }
+
+    setCreatingSession(true);
+    setSessionError("");
+
+    try {
+      const response = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: sessionTitle.trim(),
+          description: sessionDescription.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setSessionError(data?.error || "Unable to create session.");
+        return;
+      }
+
+      setSessions((current) => [data.session, ...current]);
+      setActiveSession(data.session);
+      setSessionModalOpen(false);
+      setSessionTitle("");
+      setSessionDescription("");
+    } catch (error) {
+      setSessionError("Unable to create session.");
+    } finally {
+      setCreatingSession(false);
+    }
+  };
+
   return (
     <div ref={dragContainerRef} className="relative min-h-screen">
       <GooeyPage />
@@ -124,11 +221,11 @@ export default function Home() {
         </div>
       )}
 
-      <div className="absolute top-6 left-6 z-50 w-64">
+      <div className="absolute top-6 left-6 z-50 flex gap-2">
         <Combobox
           items={sessions.map((s) => s.title ?? "Untitled Session")}
         >
-          <ComboboxInput placeholder="Select session" className="font-bold text-white" />
+          <ComboboxInput className="font-semibold text-white" placeholder="Select Session" />
 
           <ComboboxContent>
             <ComboboxEmpty>No sessions found</ComboboxEmpty>
@@ -149,12 +246,207 @@ export default function Home() {
             </ComboboxList>
           </ComboboxContent>
         </Combobox>
+        {isAdmin && (<button
+          type="button"
+          onClick={() => setSessionModalOpen(true)}
+          aria-label="Create session"
+          className="cursor-pointer text-white"
+        >
+          <Plus className="h-4 w-4" />
+        </button>)}
       </div>
+
+      <div className="fixed right-6 bottom-1 z-50 flex -translate-y-1/2 items-center hover:scale">
+        <button
+          type="button"
+          onClick={() => {
+            setQuestionError("");
+            setQuestionModalOpen(true);
+          }}
+          aria-label="Ask a question"
+          className="group inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white shadow-lg transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 cursor-pointer"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-6 w-6 text-white"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+          </svg>
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {sessionModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSessionModalOpen(false)}
+            className="fixed inset-0 z-[998] flex items-center justify-center bg-black/60 px-4 py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-zinc-950/95 p-6 shadow-2xl backdrop-blur-xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Create session</h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Add a new session and start adding questions immediately.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSessionModalOpen(false)}
+                  className="rounded-lg border border-white/10 bg-white/5 p-1 text-sm text-white transition hover:bg-white/10"
+                >
+                  <X />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateSession} className="mt-6 space-y-4">
+                <div>
+                  <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-zinc-200 font-bold">
+                    Session title
+                  </label>
+                  <input
+                    value={sessionTitle}
+                    onChange={(e) => setSessionTitle(e.target.value)}
+                    placeholder="Session title"
+                    className="w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                    disabled={creatingSession}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-zinc-200 font-bold">
+                    Description
+                  </label>
+                  <textarea
+                    value={sessionDescription}
+                    onChange={(e) => setSessionDescription(e.target.value)}
+                    placeholder="Optional session description"
+                    className="min-h-[120px] w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                    disabled={creatingSession}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="submit"
+                    disabled={creatingSession || !sessionTitle.trim()}
+                    className="rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {creatingSession ? "Creating..." : "Create session"}
+                  </button>
+                </div>
+
+                {sessionError && (
+                  <p className="text-sm text-rose-400">{sessionError}</p>
+                )}
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {questionModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setQuestionModalOpen(false)}
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-4 py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-zinc-950/95 p-6 shadow-2xl backdrop-blur-xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">What's your question?</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setQuestionModalOpen(false)}
+                  className="rounded-lg border border-white/10 bg-white/5 p-1 text-sm text-white transition hover:bg-white/10"
+                >
+                  <X />
+                </button>
+              </div>
+
+              {!activeSession ? (
+                <div className="mt-6 rounded-3xl border border-rose-400/20 bg-rose-500/5 p-4 text-sm text-rose-200">
+                  Select a session first before asking a question.
+                </div>
+              ) : (
+                <form onSubmit={handleCreateQuestion} className="mt-6 space-y-4">
+                  <div>
+                    <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-zinc-200 font-bold">
+                      Question
+                    </label>
+                    <input
+                      type="text"
+                      value={questionTitle}
+                      onChange={(e) => setQuestionTitle(e.target.value)}
+                      placeholder="Short question title"
+                      className="w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                      disabled={creatingQuestion}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-zinc-200 font-bold">
+                      Details
+                    </label>
+                    <textarea
+                      value={questionText}
+                      onChange={(e) => setQuestionText(e.target.value)}
+                      placeholder="Describe what you want to ask..."
+                      className="min-h-[140px] w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none transition focus:border-white/30"
+                      disabled={creatingQuestion}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <button
+                      type="submit"
+                      disabled={creatingQuestion || !questionTitle.trim() || !questionText.trim()}
+                      className="rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {creatingQuestion ? "Submitting..." : "Submit question"}
+                    </button>
+                  </div>
+
+                  {questionError && (
+                    <p className="text-sm text-rose-400">{questionError}</p>
+                  )}
+                </form>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* QUESTIONS FROM ACTIVE SESSION */}
       <div>
         {activeSession?.questions?.map((q) => {
-          const { top, left } = getRandomPosition();
+          const position = questionPositions.current[q.id] ?? getRandomPosition();
+
+          if (!questionPositions.current[q.id]) {
+            questionPositions.current[q.id] = position;
+          }
 
           return (
             <QuestionCard
@@ -164,8 +456,8 @@ export default function Home() {
               description={q.question}
               isAnswered={q.isAnswered}
               answers={q.answers}
-              top={top}
-              left={left}
+              top={position.top}
+              left={position.left}
               dragConstraintsRef={dragContainerRef!}
               isAdmin={isAdmin}
               onAnswerAdded={handleAnswerAdded}

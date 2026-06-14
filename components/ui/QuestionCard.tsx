@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DraggableCard } from "@/components/ui/DraggableCard";
 import { Answer } from "@/types/prisma";
@@ -31,9 +31,22 @@ const QuestionCard = ({
   onAnswerAdded,
 }: QuestionCardProps) => {
   const [expanded, setExpanded] = useState(false);
+  const isDraggingRef = useRef(false);
   const [answerText, setAnswerText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  const handleCardClick = () => {
+    if (isDraggingRef.current) {
+      return;
+    }
+
+    setExpanded((v) => !v);
+  };
+
+  const handleDraggingChanged = (dragging: boolean) => {
+    isDraggingRef.current = dragging;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -68,11 +81,16 @@ const QuestionCard = ({
   };
 
   return (
-    <DraggableCard id={id} style={{ top, left }} dragConstraintsRef={dragConstraintsRef}>
+    <DraggableCard
+      id={id}
+      style={{ top, left }}
+      dragConstraintsRef={dragConstraintsRef}
+      onDraggingChanged={handleDraggingChanged}
+    >
       <motion.div
         layout
         transition={{ type: "spring", stiffness: 240, damping: 22 }}
-        onClick={() => setExpanded((v) => !v)}
+        onClick={handleCardClick}
         whileHover={{ scale: 1.01 }}
         className={`relative max-h-[700px] w-80 cursor-pointer overflow-hidden rounded-[2rem] border p-5 text-left backdrop-blur-md transition-colors duration-300 ${
           isAnswered

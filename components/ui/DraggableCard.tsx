@@ -7,6 +7,7 @@ interface DraggableCardProps {
   id: string;
   children: React.ReactNode;
   onDragEnd?: (id: string, x: number, y: number) => void;
+  onDraggingChanged?: (isDragging: boolean) => void;
   className?: string;
   style?: CSSProperties;
   dragConstraintsRef?: React.RefObject<HTMLDivElement | null>;
@@ -16,6 +17,7 @@ export function DraggableCard({
   id,
   children,
   onDragEnd,
+  onDraggingChanged,
   className,
   style,
   dragConstraintsRef,
@@ -56,9 +58,13 @@ export function DraggableCard({
       dragMomentum={false}
       dragElastic={0}
       dragConstraints={dragConstraintsRef ?? constraints}
-      onDragStart={() => setIsDragging(true)}
+      onDragStart={() => {
+        setIsDragging(true);
+        onDraggingChanged?.(true);
+      }}
       onDragEnd={(_, info) => {
         setIsDragging(false);
+        onDraggingChanged?.(false);
         onDragEnd?.(id, info.point.x, info.point.y);
       }}
       whileDrag={{
