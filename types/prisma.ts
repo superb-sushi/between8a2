@@ -37,6 +37,7 @@ export type QuestionWithAnswers = Question & {
  */
 export type SessionFull = Session & {
   questions: QuestionWithAnswers[];
+  hasPasscode?: boolean;
 };
 
 /**
@@ -46,6 +47,10 @@ export type SessionPreview = Pick<
   Session,
   "id" | "title" | "description" | "createdAt"
 >;
+
+export type SessionSummary = SessionPreview & {
+  hasPasscode: boolean;
+};
 
 /**
  * Session with counts only (useful for sidebar / cards)

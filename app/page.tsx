@@ -6,7 +6,7 @@ import GooeyPage from "./gooey-demo"
 import QuestionCard from "@/components/ui/QuestionCard"
 import { AdminLoginModal } from "@/components/ui/AdminLoginModal"
 import { AdminCreateModal } from "@/components/ui/AdminCreateModal"
-import { QuestionWithAnswers, SessionFull } from "@/types/prisma"
+import { QuestionWithAnswers, SessionFull, SessionSummary } from "@/types/prisma"
 
 import { Milestone } from "lucide-react";
 
@@ -49,8 +49,16 @@ const getRandomPosition = (container?: HTMLDivElement | null) => {
 
 export default function Home() {
   const dragContainerRef = useRef<HTMLDivElement | null>(null);
-  const [sessions, setSessions] = useState<SessionFull[]>([]);
-  const [activeSession, setActiveSession] = useState<SessionFull>();
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [activeSession, setActiveSession] = useState<SessionFull | null>(null);
+  const [selectedSessionSummary, setSelectedSessionSummary] = useState<SessionSummary | null>(null);
+  const [passcodeModalOpen, setPasscodeModalOpen] = useState(false);
+  const [unlockPasscode, setUnlockPasscode] = useState("");
+  const [newSessionPasscode, setNewSessionPasscode] = useState("");
+  const [passcodeDigits, setPasscodeDigits] = useState(["", "", "", ""]);
+  const passcodeRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [passcodeError, setPasscodeError] = useState("");
+  const [loadingSession, setLoadingSession] = useState(false);
   const questionPositions = useRef<Record<string, { top: number; left: number }>>({});
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -70,7 +78,7 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/get-sessions")
       .then((res) => res.json())
-      .then((data: SessionFull[]) => {
+      .then((data: SessionSummary[]) => {
         setSessions(data);
       });
 
@@ -103,6 +111,129 @@ export default function Home() {
     setLoginModalOpen(false);
     const uname = localStorage.getItem("adminUsername");
     if (uname) setAdminUsername(uname);
+  };
+
+  const loadSession = async (sessionId: string, passcode?: string) => {
+    setSessionError("");
+    setQuestionError("");
+    setPasscodeError("");
+    setLoadingSession(true);
+
+    try {
+      const url = new URL(`/api/sessions/${sessionId}`, window.location.origin);
+      if (passcode) {
+        url.searchParams.set("passcode", passcode);
+      }
+
+      const response = await fetch(url.toString());
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401 && data?.requiresPasscode) {
+          setPasscodeError(data?.error || "Passcode required.");
+          setPasscodeModalOpen(true);
+          return false;
+        }
+
+        setSessionError(data?.error || "Unable to load session.");
+        return false;
+      }
+
+      setActiveSession(data.session ?? data);
+      return true;
+    } catch (error) {
+      setSessionError("Unable to load session.");
+      return false;
+    } finally {
+      setLoadingSession(false);
+    }
+  };
+
+  const handleSessionSelected = (session: SessionSummary) => {
+    if (session.hasPasscode) {
+      setSelectedSessionSummary(session);
+      setUnlockPasscode("");
+      setPasscodeDigits(["", "", "", ""]);
+      setPasscodeError("");
+      setPasscodeModalOpen(true);
+      return;
+    }
+
+    loadSession(session.id);
+  };
+
+  const handlePasscodeDigitChange = (
+    index: number,
+    value: string,
+    setCombined: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+
+    const next = [...passcodeDigits];
+    next[index] = digit;
+
+    setPasscodeDigits(next);
+    setCombined(next.join(""));
+
+    if (digit && index < 3) {
+      passcodeRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePasscodeKeyDown = (
+  index: number,
+  e: React.KeyboardEvent<HTMLInputElement>
+) => {
+  if (
+    e.key === "Backspace" &&
+    !passcodeDigits[index] &&
+    index > 0
+  ) {
+    passcodeRefs.current[index - 1]?.focus();
+  }
+};
+
+  const handlePasscodePaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+    setCombined: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    e.preventDefault();
+
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 4);
+
+    const next = ["", "", "", ""];
+
+    pasted.split("").forEach((char, i) => {
+      next[i] = char;
+    });
+
+    setPasscodeDigits(next);
+    setCombined(next.join(""));
+
+    passcodeRefs.current[
+      Math.min(pasted.length, 3)
+    ]?.focus();
+  };
+
+  const handlePasscodeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedSessionSummary) return;
+
+    if (!/^[0-9]{4}$/.test(unlockPasscode)) {
+      setPasscodeError("Passcode must be exactly 4 digits.");
+      return;
+    }
+
+    const succeeded = await loadSession(selectedSessionSummary.id, unlockPasscode);
+    if (succeeded) {
+      setPasscodeModalOpen(false);
+      setSelectedSessionSummary(null);
+      setUnlockPasscode("");
+      setPasscodeDigits(["", "", "", ""]);
+    }
   };
 
   const handleLogout = () => {
@@ -185,6 +316,11 @@ export default function Home() {
       return;
     }
 
+    if (newSessionPasscode && !/^[0-9]{4}$/.test(newSessionPasscode)) {
+      setSessionError("Passcode must be exactly 4 digits.");
+      return;
+    }
+
     setCreatingSession(true);
     setSessionError("");
 
@@ -195,6 +331,7 @@ export default function Home() {
         body: JSON.stringify({
           title: sessionTitle.trim(),
           description: sessionDescription.trim(),
+          passcode: newSessionPasscode.trim() || undefined,
         }),
       });
 
@@ -209,6 +346,7 @@ export default function Home() {
       setSessionModalOpen(false);
       setSessionTitle("");
       setSessionDescription("");
+      setNewSessionPasscode("");
     } catch (error) {
       setSessionError("Unable to create session.");
     } finally {
@@ -320,10 +458,15 @@ export default function Home() {
                     key={session.id}
                     value={session.title ? session.title : "Untitled Session"}
                     onClick={() => {
-                      setActiveSession(session);
+                      handleSessionSelected(session);
                     }}
                   >
-                    {session.title ?? "Untitled Session"}
+                    <span className="flex items-center gap-2">
+                      {session.hasPasscode && (
+                        <ShieldCheck className="h-3.5 w-3.5 text-white/70" />
+                      )}
+                      <span>{session.title ?? "Untitled Session"}</span>
+                    </span>
                   </ComboboxItem>
                 ))}
               </ComboboxList>
@@ -431,6 +574,53 @@ export default function Home() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
+                    Passcode (optional)
+                  </label>
+                  <p className="text-xs text-[#8B7355] mb-2 italic">Leave blank for an open session.</p>
+                  <div className="flex justify-center gap-3">
+                    {passcodeDigits.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => {
+                          passcodeRefs.current[index] = el;
+                        }}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={1}
+                        value={digit}
+                        disabled={loadingSession}
+                        onChange={(e) =>
+                          handlePasscodeDigitChange(index, e.target.value, setNewSessionPasscode)
+                        }
+                        onKeyDown={(e) => handlePasscodeKeyDown(index, e)}
+                        onPaste={(e) => handlePasscodePaste(e, setNewSessionPasscode)}
+                        className="
+                          h-16
+                          w-16
+                          rounded-3xl
+                          border-2
+                          border-[#E6D7C4]
+                          bg-white/90
+                          text-center
+                          text-3xl
+                          font-bold
+                          text-[#2C2420]
+                          shadow-sm
+                          outline-none
+                          transition-all
+                          focus:-translate-y-0.5
+                          focus:border-[#D85A30]
+                          focus:ring-2
+                          focus:ring-[#D85A30]/20
+                        "
+                      />
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="submit"
@@ -443,6 +633,103 @@ export default function Home() {
 
                 {sessionError && (
                   <p className="text-sm text-rose-600">{sessionError}</p>
+                )}
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {passcodeModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPasscodeModalOpen(false)}
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4 py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xl rounded-[2rem] border border-[#EDE3D6] bg-[#FBF7F0]/95 p-6 shadow-2xl backdrop-blur-xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-serif text-xl font-medium text-[#2C2420]">Enter session passcode</h2>
+                  <p className="mt-1 text-sm text-[#8B7355]">
+                    This session is protected by a 4-digit passcode.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPasscodeModalOpen(false)}
+                  aria-label="Close"
+                  className="rounded-lg border border-[#EDE3D6] bg-white/60 p-1 text-[#8B7355] transition hover:bg-white hover:text-[#2C2420]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handlePasscodeSubmit} className="mt-6 space-y-4">
+                <div>
+                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
+                    Passcode
+                  </label>
+                  <div className="flex justify-center gap-3">
+                    {passcodeDigits.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => {
+                          passcodeRefs.current[index] = el;
+                        }}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={1}
+                        value={digit}
+                        disabled={loadingSession}
+                        onChange={(e) =>
+                          handlePasscodeDigitChange(index, e.target.value, setUnlockPasscode)
+                        }
+                        onKeyDown={(e) => handlePasscodeKeyDown(index, e)}
+                        onPaste={(e) => handlePasscodePaste(e, setUnlockPasscode)}
+                        className="
+                          h-16
+                          w-16
+                          rounded-3xl
+                          border-2
+                          border-[#E6D7C4]
+                          bg-white/90
+                          text-center
+                          text-3xl
+                          font-bold
+                          text-[#2C2420]
+                          shadow-sm
+                          outline-none
+                          transition-all
+                          focus:-translate-y-0.5
+                          focus:border-[#D85A30]
+                          focus:ring-2
+                          focus:ring-[#D85A30]/20
+                        "
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="submit"
+                    disabled={loadingSession || !unlockPasscode.trim()}
+                    className="rounded-full bg-[#D85A30] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#c44f28] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {loadingSession ? "Checking…" : "Unlock session"}
+                  </button>
+                </div>
+
+                {passcodeError && (
+                  <p className="text-sm text-rose-600">{passcodeError}</p>
                 )}
               </form>
             </motion.div>

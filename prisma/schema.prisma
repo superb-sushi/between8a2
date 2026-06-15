@@ -7,9 +7,10 @@ datasource db {
 }
 
 model Session {
-  id          String     @id @default(cuid())
-  title       String?
-  description String?
+  id           String     @id @default(cuid())
+  title        String?
+  description  String?
+  passcodeHash String?
 
   questions   Question[]
 
