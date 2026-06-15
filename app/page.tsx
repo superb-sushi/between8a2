@@ -16,7 +16,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
-import { Plus, X } from "lucide-react";
+import { Plus, X, ChevronDown, ShieldCheck, MessageCircleQuestion } from "lucide-react";
 
 const getRandomPosition = (container?: HTMLDivElement | null) => {
   const marginLeft = 24;
@@ -168,6 +168,7 @@ export default function Home() {
 
       setQuestionTitle("");
       setQuestionText("");
+      setQuestionModalOpen(false);
     } catch (error) {
       setQuestionError("Unable to submit question.");
     } finally {
@@ -252,6 +253,9 @@ export default function Home() {
     <div ref={dragContainerRef} className="relative min-h-screen">
       <GooeyPage />
 
+      {/* Contrast scrim — keeps text legible regardless of which background photo loads */}
+      <div className="pointer-events-none fixed inset-0 z-[1] bg-gradient-to-b from-black/35 via-black/5 to-black/45" />
+
       <AdminLoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
@@ -263,85 +267,93 @@ export default function Home() {
         onClose={() => setCreateAdminOpen(false)}
       />
 
+      {/* Brand mark */}
+      <div className="absolute top-4 left-4 z-40 sm:top-6 sm:left-6 pointer-events-none">
+        <span className="font-serif text-lg font-medium tracking-tight text-white drop-shadow-md sm:text-xl tracking-widest">
+          Between Eight and Two
+        </span>
+      </div>
+
       {/* Admin badge and logout button */}
       {isAdmin && (
-        <div className="absolute top-6 right-6 z-40 flex items-center gap-2 rounded-full border border-green-500/20 bg-black/75 px-3 py-2 text-white shadow-lg">
-          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
-          <span className="text-sm tracking-[0.15em] font-bold text-emerald-300">{adminUsername ?? "Admin"}</span>
+        <div className="absolute top-4 right-4 z-40 flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-white shadow-lg backdrop-blur-md sm:top-6 sm:right-6 sm:px-3 sm:py-2">
+          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+          <span className="text-xs font-semibold tracking-[0.12em] text-emerald-200 sm:text-sm">
+            {adminUsername ?? "Admin"}
+          </span>
           <button
             type="button"
             onClick={() => setCreateAdminOpen(true)}
-            className="rounded-full bg-white/10 px-3 py-1 text-[11px] text-white transition hover:bg-white/20"
+            className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/90 transition hover:bg-white/20"
           >
-            New Admin
+            Add Leader
           </button>
           <button
             type="button"
             onClick={handleLogout}
-            className="rounded-full bg-white/10 px-3 py-1 text-[11px] text-white transition hover:bg-white/20"
+            className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/90 transition hover:bg-white/20"
           >
-            Logout
+            Log out
           </button>
         </div>
       )}
 
-      <div className="absolute top-6 left-6 z-50 flex gap-2">
-        <Combobox
-          items={sessions.map((s) => s.title ?? "Untitled Session")}
-        >
-          <ComboboxInput className="font-semibold text-white" placeholder="Select Session" />
+      {/* Session selector */}
+      <div className="absolute top-14 left-4 z-50 flex items-center gap-2 sm:top-[4.25rem] sm:left-6">
+        <div className="relative">
+          <Combobox
+            items={sessions.map((s) => s.title ?? "Untitled Session")}
+          >
+            <ComboboxInput
+              className="w-44 rounded-full border border-white/20 bg-white/10 py-2 px-1 text-sm font-medium text-white placeholder-white/60 backdrop-blur-md outline-none transition focus:border-white/40 sm:w-56"
+              placeholder="Select a session"
+            />
 
-          <ComboboxContent>
-            <ComboboxEmpty>No sessions found</ComboboxEmpty>
+            <ComboboxContent>
+              <ComboboxEmpty>No sessions found</ComboboxEmpty>
 
-            <ComboboxList>
-              {sessions.map((session) => (
-                <ComboboxItem
-                  key={session.id}
-                  value={session.title ?? "Untitled Session"}
-                  onClick={() => {
-                    setActiveSession(session);
-                    console.log("selected:", session);
-                  }}
-                >
-                  {session.title ?? "Untitled Session"}
-                </ComboboxItem>
-              ))}
-            </ComboboxList>
-          </ComboboxContent>
-        </Combobox>
-        {isAdmin && (<button
-          type="button"
-          onClick={() => setSessionModalOpen(true)}
-          aria-label="Create session"
-          className="cursor-pointer text-white"
-        >
-          <Plus className="h-4 w-4" />
-        </button>)}
+              <ComboboxList>
+                {sessions.map((session) => (
+                  <ComboboxItem
+                    key={session.id}
+                    value={session.title ?? "Untitled Session"}
+                    onClick={() => {
+                      setActiveSession(session);
+                    }}
+                  >
+                    {session.title ?? "Untitled Session"}
+                  </ComboboxItem>
+                ))}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+        </div>
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setSessionModalOpen(true)}
+            aria-label="Create session"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-md transition hover:bg-black/50"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
-      <div className="fixed right-6 bottom-1 z-50 flex -translate-y-1/2 items-center hover:scale">
+      {/* Ask anonymously — primary call to action */}
+      <div className="fixed bottom-6 right-4 z-50 sm:bottom-8 sm:right-6">
         <button
           type="button"
           onClick={() => {
             setQuestionError("");
             setQuestionModalOpen(true);
           }}
-          aria-label="Ask a question"
-          className="group inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white shadow-lg transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 cursor-pointer"
+          aria-label="Ask a question anonymously"
+          className="group inline-flex h-14 items-center gap-2 rounded-full bg-[#C88A30] pl-4 pr-5 text-white shadow-lg shadow-black/20 transition hover:bg-[#c44f28] focus:outline-none focus:ring-2 focus:ring-[#D85A30]/50 active:scale-[0.98] sm:h-14"
         >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-6 w-6 text-white"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
-          </svg>
+          <Plus className="h-5 w-5" strokeWidth={2.5} />
+          <span className="text-sm font-medium tracking-tight">Ask a Question</span>
         </button>
       </div>
 
@@ -352,54 +364,55 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSessionModalOpen(false)}
-            className="fixed inset-0 z-[998] flex items-center justify-center bg-black/60 px-4 py-6"
+            className="fixed inset-0 z-[998] flex items-center justify-center bg-black/50 px-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-zinc-950/95 p-6 shadow-2xl backdrop-blur-xl"
+              className="w-full max-w-xl rounded-[2rem] border border-[#EDE3D6] bg-[#FBF7F0]/95 p-6 shadow-2xl backdrop-blur-xl"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Create session</h2>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Add a new session and start adding questions immediately.
+                  <h2 className="font-serif text-xl font-medium text-[#2C2420]">New session</h2>
+                  <p className="mt-1 text-sm text-[#8B7355]">
+                    Give this session a name so questions can be grouped under it.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSessionModalOpen(false)}
-                  className="rounded-lg border border-white/10 bg-white/5 p-1 text-sm text-white transition hover:bg-white/10"
+                  aria-label="Close"
+                  className="rounded-lg border border-[#EDE3D6] bg-white/60 p-1 text-[#8B7355] transition hover:bg-white hover:text-[#2C2420]"
                 >
-                  <X />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
               <form onSubmit={handleCreateSession} className="mt-6 space-y-4">
                 <div>
-                  <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-zinc-200 font-bold">
-                    Session title
+                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
+                    Session name
                   </label>
                   <input
                     value={sessionTitle}
                     onChange={(e) => setSessionTitle(e.target.value)}
-                    placeholder="Session title"
-                    className="w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                    placeholder="e.g. Cell — 20 Jun"
+                    className="w-full rounded-2xl border border-[#EDE3D6] bg-white/70 px-4 py-3 text-sm text-[#2C2420] outline-none transition placeholder:text-[#B8A892] focus:border-[#D85A30]/50"
                     disabled={creatingSession}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-zinc-200 font-bold">
-                    Description
+                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
+                    Description (optional)
                   </label>
                   <textarea
                     value={sessionDescription}
                     onChange={(e) => setSessionDescription(e.target.value)}
-                    placeholder="Optional session description"
-                    className="min-h-[120px] w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                    placeholder="What's this session about?"
+                    className="min-h-[120px] w-full rounded-2xl border border-[#EDE3D6] bg-white/70 px-4 py-3 text-sm text-[#2C2420] outline-none transition placeholder:text-[#B8A892] focus:border-[#D85A30]/50"
                     disabled={creatingSession}
                   />
                 </div>
@@ -408,14 +421,14 @@ export default function Home() {
                   <button
                     type="submit"
                     disabled={creatingSession || !sessionTitle.trim()}
-                    className="rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-full bg-[#D85A30] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#c44f28] disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {creatingSession ? "Creating..." : "Create session"}
+                    {creatingSession ? "Creating…" : "Create session"}
                   </button>
                 </div>
 
                 {sessionError && (
-                  <p className="text-sm text-rose-400">{sessionError}</p>
+                  <p className="text-sm text-rose-600">{sessionError}</p>
                 )}
               </form>
             </motion.div>
@@ -428,36 +441,46 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setQuestionModalOpen(false)}
-            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-4 py-6"
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-zinc-950/95 p-6 shadow-2xl backdrop-blur-xl"
+              className="w-full max-w-xl rounded-[2rem] border border-[#EDE3D6] bg-[#FBF7F0]/95 p-6 shadow-2xl backdrop-blur-xl"
             >
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">What's your question?</h2>
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5E9DD] text-[#D85A30]">
+                    <MessageCircleQuestion className="h-4.5 w-4.5" />
+                  </span>
+                  <h2 className="font-serif text-xl font-medium text-[#2C2420]">What's your question?</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setQuestionModalOpen(false)}
-                  className="rounded-lg border border-white/10 bg-white/5 p-1 text-sm text-white transition hover:bg-white/10"
+                  aria-label="Close"
+                  className="rounded-lg border border-[#EDE3D6] bg-white/60 p-1 text-[#8B7355] transition hover:bg-white hover:text-[#2C2420]"
                 >
-                  <X />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
+              {/* Anonymity reassurance — shown right where it matters most */}
+              <div className="mt-4 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-800">
+                <ShieldCheck className="h-4 w-4 flex-shrink-0" />
+                Anonymous — we don't collect names or accounts for askers
+              </div>
+
               {!activeSession ? (
-                <div className="mt-6 rounded-3xl border border-rose-400/20 bg-rose-500/5 p-4 text-sm text-rose-200">
+                <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
                   Select a session first before asking a question.
                 </div>
               ) : (
                 <form onSubmit={handleCreateQuestion} className="mt-6 space-y-4">
                   <div>
-                    <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-zinc-200 font-bold">
+                    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
                       Question
                     </label>
                     <input
@@ -465,20 +488,20 @@ export default function Home() {
                       value={questionTitle}
                       onChange={(e) => setQuestionTitle(e.target.value)}
                       placeholder="Short question title"
-                      className="w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                      className="w-full rounded-2xl border border-[#EDE3D6] bg-white/70 px-4 py-3 text-sm text-[#2C2420] outline-none transition placeholder:text-[#B8A892] focus:border-[#D85A30]/50"
                       disabled={creatingQuestion}
                     />
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-zinc-200 font-bold">
+                    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
                       Details
                     </label>
                     <textarea
                       value={questionText}
                       onChange={(e) => setQuestionText(e.target.value)}
                       placeholder="Describe what you want to ask..."
-                      className="min-h-[140px] w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none transition focus:border-white/30"
+                      className="min-h-[140px] w-full rounded-2xl border border-[#EDE3D6] bg-white/70 px-4 py-4 text-sm text-[#2C2420] outline-none transition placeholder:text-[#B8A892] focus:border-[#D85A30]/50"
                       disabled={creatingQuestion}
                     />
                   </div>
@@ -487,14 +510,14 @@ export default function Home() {
                     <button
                       type="submit"
                       disabled={creatingQuestion || !questionTitle.trim() || !questionText.trim()}
-                      className="rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-full bg-[#D85A30] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#c44f28] disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {creatingQuestion ? "Submitting..." : "Submit question"}
+                      {creatingQuestion ? "Submitting…" : "Submit question"}
                     </button>
                   </div>
 
                   {questionError && (
-                    <p className="text-sm text-rose-400">{questionError}</p>
+                    <p className="text-sm text-rose-600">{questionError}</p>
                   )}
                 </form>
               )}

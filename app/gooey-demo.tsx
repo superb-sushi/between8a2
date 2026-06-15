@@ -33,8 +33,8 @@ function GooeyPage() {
         style={{ filter: "url(#gooey-filter-pixel-trail)" }}
       >
         <PixelTrail
-          pixelSize={screenSize.lessThan(`md`) ? 24 : 38}
-          fadeDuration={300}
+          pixelSize={!screenSize.lessThan(`lg`) ? 52 : screenSize.lessThan(`md`) ? 24 : 38}
+          fadeDuration={400}
           delay={1300}
           pixelClassName="bg-white"
         />
