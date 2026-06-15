@@ -1,12 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import GooeyPage from "./gooey-demo"
 import QuestionCard from "@/components/ui/QuestionCard"
 import { AdminLoginModal } from "@/components/ui/AdminLoginModal"
 import { AdminCreateModal } from "@/components/ui/AdminCreateModal"
 import { QuestionWithAnswers, SessionFull } from "@/types/prisma"
+
+import { Milestone } from "lucide-react";
 
 import {
   Combobox,
@@ -268,7 +270,7 @@ export default function Home() {
       />
 
       {/* Brand mark */}
-      <div className="absolute top-4 left-4 z-40 sm:top-6 sm:left-6 pointer-events-none">
+      <div className="absolute top-4 left-4 z-40 sm:top-6 sm:left-6 pointer-events-none flex gap-2">
         <span className="font-serif text-lg font-semibold text-white drop-shadow-lg sm:text-xl tracking-widest">
           Between Eight and Two
         </span>
@@ -278,20 +280,20 @@ export default function Home() {
       {isAdmin && (
         <div className="absolute top-4 right-4 z-40 flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-white shadow-lg backdrop-blur-md sm:top-6 sm:right-6 sm:px-3 sm:py-2">
           <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-          <span className="text-xs font-semibold tracking-[0.12em] text-emerald-200 sm:text-sm">
+          <span className="text-3xs font-semibold tracking-[0.12em] text-emerald-200 sm:text-sm">
             {adminUsername ?? "Admin"}
           </span>
           <button
             type="button"
             onClick={() => setCreateAdminOpen(true)}
-            className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/90 transition hover:bg-white/20"
+            className="rounded-full bg-white/10 px-2 py-1 text-[11px] text-white/90 transition hover:bg-white/20"
           >
             Add Leader
           </button>
           <button
             type="button"
             onClick={handleLogout}
-            className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/90 transition hover:bg-white/20"
+            className="rounded-full bg-white/10 px-2 py-1 text-[11px] text-white/90 transition hover:bg-white/20"
           >
             Log out
           </button>
@@ -299,8 +301,8 @@ export default function Home() {
       )}
 
       {/* Session selector */}
-      <div className="absolute top-14 left-4 z-50 flex items-center gap-2 sm:top-[4.25rem] sm:left-6">
-        <div className="relative">
+      <div className="absolute top-14 left-4 z-50 flex-col items-center gap-5 sm:top-[4rem] sm:left-6">
+        <div className="flex gap-2 items-center">        
           <Combobox
             items={sessions.map((s) => s.title ?? "Untitled Session")}
           >
@@ -316,7 +318,7 @@ export default function Home() {
                 {sessions.map((session) => (
                   <ComboboxItem
                     key={session.id}
-                    value={session.title ?? "Untitled Session"}
+                    value={session.title ? session.title : "Untitled Session"}
                     onClick={() => {
                       setActiveSession(session);
                     }}
@@ -327,9 +329,8 @@ export default function Home() {
               </ComboboxList>
             </ComboboxContent>
           </Combobox>
-        </div>
 
-        {isAdmin && (
+          {isAdmin && (
           <button
             type="button"
             onClick={() => setSessionModalOpen(true)}
@@ -338,6 +339,19 @@ export default function Home() {
           >
             <Plus className="h-4 w-4" />
           </button>
+        )}
+        </div>
+
+        {/* Active session info */}
+        {activeSession?.description && (
+          <div className="z-40 max-w-[60vw] sm:left-6">
+            <div className="rounded-full py-1 px-4 text-white/80 flex gap-1.5">
+              <Milestone size={15}/>
+              <span className="text-muted-background italic text-xs">
+                {activeSession.description}
+              </span>
+            </div>
+          </div>
         )}
       </div>
 
