@@ -17,6 +17,10 @@ import sparkle from "@/public/sparkle.png"
 import spice from "@/public/spice.png"
 import stamp from "@/public/stamp.png"
 import tofu from "@/public/tofu.png"
+import yoghurt from "@/public/yoghurt.png"
+import dango from "@/public/dango.png"
+import soba from "@/public/soba.png"
+import dino from "@/public/dino.png"
 import Image from "next/image";
 
 type AnswerWithAdmin = Answer & {
@@ -52,7 +56,7 @@ function hashId(id: string) {
   return Math.abs(hash);
 }
 
-const STICKERS = [bento, best, chips, egg, fish, nice, smile, soyasauce, sparkle, spice, stamp, tofu];
+const STICKERS = [bento, best, chips, egg, fish, nice, smile, soyasauce, sparkle, spice, stamp, tofu, yoghurt, dango, soba, dino];
 
 const QuestionCard = ({
   id,
@@ -82,9 +86,9 @@ const QuestionCard = ({
   // Derive a stable "sticker look" from the question id
   const hash = hashId(id);
   const sticker = STICKERS[Math.floor(hash / STICKERS.length) % STICKERS.length];
-  const rotation = (hash % 13) - 6; // -6deg to +6deg
-  const stickerRotation = ((hash % 7) - 3) * 2;
-  const stickerSize = 250 + (hash % 30);
+  const rotation = (hash % 21) - 10;        // -10° to +10°
+  const stickerRotation = (hash % 25) - 12; // -12° to +12°
+  const stickerSize = 220 + (hash % 80);    // 220px to 299px
 
   const handleCardClick = () => {
     if (isDraggingRef.current) {
