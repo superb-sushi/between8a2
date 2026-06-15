@@ -86,9 +86,9 @@ const QuestionCard = ({
   // Derive a stable "sticker look" from the question id
   const hash = hashId(id);
   const sticker = STICKERS[Math.floor(hash / STICKERS.length) % STICKERS.length];
-  const rotation = (hash % 21) - 10;        // -10° to +10°
+  const rotation = (hash % 13) - 6;        // -6° to +6°
   const stickerRotation = (hash % 25) - 12; // -12° to +12°
-  const stickerSize = 220 + (hash % 80);    // 220px to 299px
+  const stickerSize = 180 + (hash % 80);    // 180px to 259px
 
   const handleCardClick = () => {
     if (isDraggingRef.current) {
