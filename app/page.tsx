@@ -74,6 +74,7 @@ export default function Home() {
   const [questionText, setQuestionText] = useState("");
   const [creatingQuestion, setCreatingQuestion] = useState(false);
   const [questionError, setQuestionError] = useState("");
+  const [questionToastOpen, setQuestionToastOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/get-sessions")
@@ -105,6 +106,12 @@ export default function Home() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [loginModalOpen]);
+
+  useEffect(() => {
+    if (!questionToastOpen) return;
+    const timer = setTimeout(() => setQuestionToastOpen(false), 8000);
+    return () => clearTimeout(timer);
+  }, [questionToastOpen]);
 
   const handleLoginSuccess = () => {
     setIsAdmin(true);
@@ -181,17 +188,17 @@ export default function Home() {
   };
 
   const handlePasscodeKeyDown = (
-  index: number,
-  e: React.KeyboardEvent<HTMLInputElement>
-) => {
-  if (
-    e.key === "Backspace" &&
-    !passcodeDigits[index] &&
-    index > 0
-  ) {
-    passcodeRefs.current[index - 1]?.focus();
-  }
-};
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (
+      e.key === "Backspace" &&
+      !passcodeDigits[index] &&
+      index > 0
+    ) {
+      passcodeRefs.current[index - 1]?.focus();
+    }
+  };
 
   const handlePasscodePaste = (
     e: React.ClipboardEvent<HTMLInputElement>,
@@ -262,6 +269,76 @@ export default function Home() {
     });
   };
 
+  const handleApproveQuestion = async (questionId: string) => {
+    const token = localStorage.getItem("adminToken");
+
+    try {
+      const response = await fetch(`/api/questions/${questionId}/approve`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "APPROVED" }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setQuestionError(data?.error || "Unable to approve question.");
+        return;
+      }
+
+      setActiveSession((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          questions: current.questions.map((question) =>
+            question.id === questionId
+              ? { ...question, status: "APPROVED" as const }
+              : question
+          ),
+        } as SessionFull;
+      });
+    } catch (error) {
+      setQuestionError("Unable to approve question.");
+    }
+  };
+
+  const handleRejectQuestion = async (questionId: string) => {
+    const token = localStorage.getItem("adminToken");
+
+    try {
+      const response = await fetch(`/api/questions/${questionId}/delete`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setQuestionError(data?.error || "Unable to reject question.");
+        return;
+      }
+
+      setActiveSession((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          questions: current.questions.filter((question) => question.id !== questionId),
+        } as SessionFull;
+      });
+
+      // Free up the cached position so it can be reused
+      delete questionPositions.current[questionId];
+    } catch (error) {
+      setQuestionError("Unable to reject question.");
+    }
+  };
+
   const handleCreateQuestion = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!activeSession) return;
@@ -302,6 +379,7 @@ export default function Home() {
       setQuestionTitle("");
       setQuestionText("");
       setQuestionModalOpen(false);
+      setQuestionToastOpen(true); 
     } catch (error) {
       setQuestionError("Unable to submit question.");
     } finally {
@@ -389,6 +467,14 @@ export default function Home() {
     return () => window.removeEventListener("resize", clampPositions);
   }, []);
 
+  // Pending questions are only relevant to admins reviewing the queue
+  const pendingCount = activeSession?.questions?.filter((q) => q.status === "PENDING").length ?? 0;
+
+  // Non-admins only ever see approved questions; admins see everything
+  const visibleQuestions = activeSession?.questions?.filter(
+    (q) => isAdmin || q.status === "APPROVED"
+  ) ?? [];
+
   return (
     <div ref={dragContainerRef} className="relative min-h-screen">
       <GooeyPage />
@@ -421,6 +507,11 @@ export default function Home() {
           <span className="text-3xs font-semibold tracking-[0.12em] text-emerald-200 sm:text-sm">
             {adminUsername ?? "Admin"}
           </span>
+          {pendingCount > 0 && (
+            <span className="rounded-full bg-amber-400/20 px-2 py-1 text-[11px] font-semibold tracking-[0.08em] text-amber-200">
+              {pendingCount} pending
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setCreateAdminOpen(true)}
@@ -645,38 +736,54 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setPasscodeModalOpen(false)}
-            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4 py-6"
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-3 sm:px-2 py-4 sm:py-6"
           >
             <motion.div
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-xl rounded-[2rem] border border-[#EDE3D6] bg-[#FBF7F0]/95 p-6 shadow-2xl backdrop-blur-xl"
+              className="
+                max-w-xl
+                max-h-[90vh]
+                overflow-y-auto
+                rounded-[1.5rem] sm:rounded-[2rem]
+                border border-[#EDE3D6]
+                bg-[#FBF7F0]/95
+                p-4 sm:p-6
+                shadow-2xl backdrop-blur-xl
+              "
             >
-              <div className="flex items-start justify-between gap-4">
+              {/* HEADER */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                 <div>
-                  <h2 className="font-serif text-xl font-medium text-[#2C2420]">Enter session passcode</h2>
-                  <p className="mt-1 text-sm text-[#8B7355]">
+                  <h2 className="font-serif text-lg sm:text-xl font-medium text-[#2C2420]">
+                    Enter session passcode
+                  </h2>
+                  <p className="mt-1 text-xs sm:text-sm text-[#8B7355]">
                     This session is protected by a 4-digit passcode.
                   </p>
                 </div>
+
                 <button
                   type="button"
                   onClick={() => setPasscodeModalOpen(false)}
                   aria-label="Close"
-                  className="rounded-lg border border-[#EDE3D6] bg-white/60 p-1 text-[#8B7355] transition hover:bg-white hover:text-[#2C2420]"
+                  className="self-end sm:self-auto rounded-lg border border-[#EDE3D6] bg-white/60 p-1 text-[#8B7355] transition hover:bg-white hover:text-[#2C2420]"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <form onSubmit={handlePasscodeSubmit} className="mt-6 space-y-4">
+              {/* FORM */}
+              <form onSubmit={handlePasscodeSubmit} className="mt-6 space-y-5">
                 <div>
-                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
+                  <label className="mb-3 block text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355] text-center">
                     Passcode
                   </label>
-                  <div className="flex justify-center gap-3">
+
+                  {/* INPUTS */}
+                  <div className="flex justify-center gap-2 sm:gap-3">
                     {passcodeDigits.map((digit, index) => (
                       <input
                         key={index}
@@ -690,19 +797,21 @@ export default function Home() {
                         value={digit}
                         disabled={loadingSession}
                         onChange={(e) =>
-                          handlePasscodeDigitChange(index, e.target.value, setUnlockPasscode)
+                          handlePasscodeDigitChange(
+                            index,
+                            e.target.value,
+                            setUnlockPasscode
+                          )
                         }
                         onKeyDown={(e) => handlePasscodeKeyDown(index, e)}
                         onPaste={(e) => handlePasscodePaste(e, setUnlockPasscode)}
                         className="
-                          h-16
-                          w-16
-                          rounded-3xl
-                          border-2
-                          border-[#E6D7C4]
+                          h-12 w-12 sm:h-16 sm:w-16
+                          rounded-2xl sm:rounded-3xl
+                          border-2 border-[#E6D7C4]
                           bg-white/90
                           text-center
-                          text-3xl
+                          text-xl sm:text-3xl
                           font-bold
                           text-[#2C2420]
                           shadow-sm
@@ -710,26 +819,36 @@ export default function Home() {
                           transition-all
                           focus:-translate-y-0.5
                           focus:border-[#D85A30]
-                          focus:ring-2
-                          focus:ring-[#D85A30]/20
+                          focus:ring-2 focus:ring-[#D85A30]/20
                         "
                       />
                     ))}
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {/* BUTTON */}
+                <div className="flex flex-col gap-3">
                   <button
                     type="submit"
                     disabled={loadingSession || !unlockPasscode.trim()}
-                    className="rounded-full bg-[#D85A30] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#c44f28] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="
+                      w-full sm:w-auto
+                      rounded-full
+                      bg-[#D85A30]
+                      px-5 py-3
+                      text-sm font-medium text-white
+                      transition hover:bg-[#c44f28]
+                      disabled:cursor-not-allowed disabled:opacity-40
+                    "
                   >
                     {loadingSession ? "Checking…" : "Unlock session"}
                   </button>
                 </div>
 
                 {passcodeError && (
-                  <p className="text-sm text-rose-600">{passcodeError}</p>
+                  <p className="text-sm text-rose-600 text-center">
+                    {passcodeError}
+                  </p>
                 )}
               </form>
             </motion.div>
@@ -820,11 +939,23 @@ export default function Home() {
             </motion.div>
           </motion.div>
         )}
+        {questionToastOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="pointer-events-none fixed inset-0 z-[1000] flex items-center justify-center px-4"
+          >
+            <div className="pointer-events-auto w-full max-w-sm rounded-3xl border border-[#EDE3D6] bg-[#FBF7F0]/95 px-6 py-5 text-center text-sm font-medium text-[#2C2420] shadow-2xl backdrop-blur-xl sm:max-w-md sm:text-base">
+              Your question is under review - It'll appear once approved. Thanks!
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* QUESTIONS FROM ACTIVE SESSION */}
       <div>
-        {activeSession?.questions?.map((q) => {
+        {visibleQuestions.map((q) => {
           const position = questionPositions.current[q.id] ?? getRandomPosition(dragContainerRef.current);
 
           if (!questionPositions.current[q.id]) {
@@ -837,6 +968,7 @@ export default function Home() {
               id={q.id}
               title={q.title}
               description={q.question}
+              status={q.status}
               isAnswered={q.isAnswered}
               answers={q.answers}
               top={position.top}
@@ -844,6 +976,8 @@ export default function Home() {
               dragConstraintsRef={dragContainerRef!}
               isAdmin={isAdmin}
               onAnswerAdded={handleAnswerAdded}
+              onApprove={handleApproveQuestion}
+              onReject={handleRejectQuestion}
             />
           );
         })}
