@@ -137,6 +137,16 @@ const QuestionCard = ({
         tabIndex={0}
         aria-label={expanded ? "Collapse question" : "Reveal question"}
         onKeyDown={(e) => {
+          const target = e.target as HTMLElement;
+
+          // 🚨 ignore typing inside input/textarea/contenteditable
+          if (
+            target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            (target as HTMLElement).isContentEditable
+          ) {
+            return;
+          }
           if (e.key === "Enter" || e.key === " ") handleCardClick();
         }}
         style={{
