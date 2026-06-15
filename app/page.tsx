@@ -269,7 +269,7 @@ export default function Home() {
 
       {/* Brand mark */}
       <div className="absolute top-4 left-4 z-40 sm:top-6 sm:left-6 pointer-events-none">
-        <span className="font-serif text-lg font-medium tracking-tight text-white drop-shadow-md sm:text-xl tracking-widest">
+        <span className="font-serif text-lg font-semibold text-white drop-shadow-lg sm:text-xl tracking-widest">
           Between Eight and Two
         </span>
       </div>
@@ -350,7 +350,7 @@ export default function Home() {
             setQuestionModalOpen(true);
           }}
           aria-label="Ask a question anonymously"
-          className="group inline-flex h-14 items-center gap-2 rounded-full bg-[#C88A30] pl-4 pr-5 text-white shadow-lg shadow-black/20 transition hover:bg-[#c44f28] focus:outline-none focus:ring-2 focus:ring-[#D85A30]/50 active:scale-[0.98] sm:h-14"
+          className="group inline-flex h-14 items-center gap-2 rounded-full bg-[#C88A30] pl-4 pr-5 text-white shadow-lg shadow-black/20 transition hover:bg-[#A44f28] focus:outline-none active:scale-[0.98] sm:h-14 cursor-pointer"
         >
           <Plus className="h-5 w-5" strokeWidth={2.5} />
           <span className="text-sm font-medium tracking-tight">Ask a Question</span>
@@ -452,9 +452,6 @@ export default function Home() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5E9DD] text-[#D85A30]">
-                    <MessageCircleQuestion className="h-4.5 w-4.5" />
-                  </span>
                   <h2 className="font-serif text-xl font-medium text-[#2C2420]">What's your question?</h2>
                 </div>
                 <button
@@ -467,10 +464,8 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Anonymity reassurance — shown right where it matters most */}
-              <div className="mt-4 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-800">
-                <ShieldCheck className="h-4 w-4 flex-shrink-0" />
-                Anonymous — we don't collect names or accounts for askers
+              <div className="flex items-center gap-2 rounded-2xl py-1.5 px-1 text-sm font-medium text-muted-foreground">
+                Questions are fully anonymous, so feel free to ask away!
               </div>
 
               {!activeSession ? (
@@ -480,7 +475,7 @@ export default function Home() {
               ) : (
                 <form onSubmit={handleCreateQuestion} className="mt-6 space-y-4">
                   <div>
-                    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[#8B7355]">
                       Question
                     </label>
                     <input
@@ -494,7 +489,7 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355]">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[#8B7355]">
                       Details
                     </label>
                     <textarea
