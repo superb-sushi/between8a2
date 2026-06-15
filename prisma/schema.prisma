@@ -6,6 +6,11 @@ datasource db {
   provider = "postgresql" // change if you're using mysql/sqlite
 }
 
+enum QuestionStatus {
+  PENDING
+  APPROVED
+}
+
 model Session {
   id           String     @id @default(cuid())
   title        String?
@@ -23,6 +28,8 @@ model Question {
   title      String
   question   String
   isAnswered Boolean  @default(false)
+
+  status     QuestionStatus @default(PENDING)
 
   sessionId   String
   session     Session  @relation(fields: [sessionId], references: [id])

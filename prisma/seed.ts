@@ -21,7 +21,7 @@ const adminDataBase = {
 
 const session1Questions = [
   {
-    title: "Why does God allow suffering?",
+    title: "What exactly is 'Between Eight and Two about?'",
     question: "I’ve always wondered why suffering exists if God is good.",
     isAnswered: true,
   },
@@ -126,7 +126,7 @@ export async function main() {
     data: [
       {
         content:
-          "Suffering may exist in a fallen world while still allowing free will.",
+          "'Between Eight and Two' is an initiative done to create a safe space for members of 8.2 to ask questions they may have revolving around things like Jesus, faith, life, and theology! The platform serves to allow members to post questions anonymously, while also allowing leaders to reply to these answers, giving cell members greater clarity and allowing them to receive good advice!",
         questionId: questionsSession1[0].id,
         adminId: admin.id,
       },
