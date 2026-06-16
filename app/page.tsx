@@ -18,7 +18,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox"
-import { Plus, X, ChevronDown, ShieldCheck, MessageCircleQuestion } from "lucide-react";
+import { Plus, X, Lock } from "lucide-react";
 
 const getRandomPosition = (container?: HTMLDivElement | null) => {
   const marginLeft = 24;
@@ -75,6 +75,15 @@ export default function Home() {
   const [creatingQuestion, setCreatingQuestion] = useState(false);
   const [questionError, setQuestionError] = useState("");
   const [questionToastOpen, setQuestionToastOpen] = useState(false);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryData, setSummaryData] = useState<{
+    summary: string;
+    takeaways: string[];
+    parkingLot: string[];
+    tags: string[];
+  } | null>(null);
+  const [summaryError, setSummaryError] = useState("");
 
   useEffect(() => {
     fetch("/api/get-sessions")
@@ -90,6 +99,26 @@ export default function Home() {
       setIsAdmin(true);
       if (storedAdmin) setAdminUsername(storedAdmin);
     }
+  }, []);
+
+  // Auto-restore active session after reload if the user previously opened one
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("activeSession");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { id: string; passcode: string | null } | null;
+      if (!parsed?.id) return;
+
+      // attempt to load; if passcode was stored and invalid, clear stored session
+      (async () => {
+        const ok = await loadSession(parsed.id, parsed.passcode ?? undefined);
+        if (!ok) {
+          try {
+            localStorage.removeItem("activeSession");
+          } catch (err) {}
+        }
+      })();
+    } catch (err) {}
   }, []);
 
   // Keyboard shortcut: Press "/" to open login modal
@@ -146,7 +175,16 @@ export default function Home() {
         return false;
       }
 
-      setActiveSession(data.session ?? data);
+      const sessionObj = data.session ?? data;
+      setActiveSession(sessionObj);
+
+      try {
+        // persist active session so reloading keeps the same session
+        localStorage.setItem(
+          "activeSession",
+          JSON.stringify({ id: sessionId, passcode: passcode ?? null })
+        );
+      } catch (err) {}
       return true;
     } catch (error) {
       setSessionError("Unable to load session.");
@@ -339,6 +377,37 @@ export default function Home() {
     }
   };
 
+  const handleGenerateSummary = async () => {
+    if (!activeSession) return;
+    setSummaryLoading(true);
+    setSummaryError("");
+    setSummaryData(null);
+    setSummaryModalOpen(true);
+
+    try {
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch(`/api/sessions/${activeSession.id}/summary`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setSummaryError(data?.error || "Unable to generate summary.");
+        return;
+      }
+
+      setSummaryData(data);
+    } catch (error) {
+      setSummaryError("Unable to generate summary.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   const handleCreateQuestion = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!activeSession) return;
@@ -421,6 +490,9 @@ export default function Home() {
 
       setSessions((current) => [data.session, ...current]);
       setActiveSession(data.session);
+      try {
+        localStorage.setItem("activeSession", JSON.stringify({ id: data.session.id, passcode: newSessionPasscode || null }));
+      } catch (err) {}
       setSessionModalOpen(false);
       setSessionTitle("");
       setSessionDescription("");
@@ -519,6 +591,17 @@ export default function Home() {
           >
             Add Leader
           </button>
+
+          {activeSession?.questions?.some((q) => q.isAnswered) && (
+            <button
+              type="button"
+              onClick={handleGenerateSummary}
+              className="rounded-full bg-white/10 px-2 py-1 text-[11px] text-white/90 transition hover:bg-white/20"
+            >
+              ✦ Summarise
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleLogout}
@@ -538,6 +621,7 @@ export default function Home() {
             <ComboboxInput
               className="w-44 rounded-full border border-white/20 bg-white/10 py-2 px-1 text-sm font-medium text-white placeholder-white/60 backdrop-blur-md outline-none transition focus:border-white/40 sm:w-56"
               placeholder="Select a session"
+              value={activeSession?.title ?? ""}
             />
 
             <ComboboxContent>
@@ -548,15 +632,16 @@ export default function Home() {
                   <ComboboxItem
                     key={session.id}
                     value={session.title ? session.title : "Untitled Session"}
+                    className="cursor-pointer"
                     onClick={() => {
                       handleSessionSelected(session);
                     }}
                   >
                     <span className="flex items-center gap-2">
-                      {session.hasPasscode && (
-                        <ShieldCheck className="h-3.5 w-3.5 text-white/70" />
-                      )}
                       <span>{session.title ?? "Untitled Session"}</span>
+                      {session.hasPasscode && (
+                        <Lock className="h-3.5 w-3.5 text-white/70" />
+                      )}
                     </span>
                   </ComboboxItem>
                 ))}
@@ -851,6 +936,100 @@ export default function Home() {
                   </p>
                 )}
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {summaryModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSummaryModalOpen(false)}
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 px-4 py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xl rounded-[2rem] border border-[#EDE3D6] bg-[#FBF7F0]/95 p-6 shadow-2xl backdrop-blur-xl"
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-serif text-xl font-medium text-[#2C2420]">Session Summary</h2>
+                  <p className="mt-1 text-sm text-[#8B7355]">AI-generated breakdown of the discussed questions.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSummaryModalOpen(false)}
+                  className="rounded-lg border border-[#EDE3D6] bg-white/60 p-1 text-[#8B7355] transition hover:bg-white hover:text-[#2C2420]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Dynamic Modal Content Container */}
+              <div className="mt-6 space-y-5 max-h-[60vh] overflow-y-auto pr-2">
+                {summaryLoading && (
+                  <p className="text-sm italic text-[#8B7355] animate-pulse">Distilling session points...</p>
+                )}
+
+                {summaryError && (
+                  <p className="text-sm text-rose-600">{summaryError}</p>
+                )}
+
+                {!summaryLoading && summaryData && (
+                  <div className="space-y-5 text-[#2C2420]">
+                    {/* Tags Layout Array */}
+                    {summaryData.tags && summaryData.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pb-1">
+                        {summaryData.tags.map((tag, index) => (
+                          <span 
+                            key={index} 
+                            className="rounded-full border border-[#EDE3D6] bg-[#EDE3D6]/40 px-2.5 py-0.5 text-xs font-medium text-[#8B7355]"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Main Narrative Summary Block */}
+                    <div>
+                      <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355] mb-1">Summary</h4>
+                      <p className="text-sm leading-relaxed">{summaryData.summary}</p>
+                    </div>
+
+                    {/* Key Takeaways Structural Block */}
+                    {summaryData.takeaways && summaryData.takeaways.length > 0 && (
+                      <div>
+                        <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8B7355] mb-1">Key Takeaways</h4>
+                        <ul className="list-disc pl-5 text-sm space-y-1.5 leading-relaxed">
+                          {summaryData.takeaways.map((point, index) => (
+                            <li key={index}>{point}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Parking Lot Follow-Ups Component */}
+                    {summaryData.parkingLot && summaryData.parkingLot.length > 0 && (
+                      <div className="border-t border-[#EDE3D6] pt-4 mt-2">
+                        <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C88A30] mb-1.5">
+                          Parking Lot (Open Questions)
+                        </h4>
+                        <ul className="list-disc pl-5 text-sm text-[#5C4D46] space-y-1.5 italic leading-relaxed">
+                          {summaryData.parkingLot.map((item, index) => (
+                            <li key={index}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}

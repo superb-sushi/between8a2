@@ -88,7 +88,7 @@ const QuestionCard = ({
   const sticker = STICKERS[Math.floor(hash / STICKERS.length) % STICKERS.length];
   const rotation = (hash % 13) - 6;        // -6° to +6°
   const stickerRotation = (hash % 25) - 12; // -12° to +12°
-  const stickerSize = 180 + (hash % 80);    // 180px to 259px
+  const stickerSize = 130 + (hash % 70);    // 130px to 199px
 
   const handleCardClick = () => {
     if (isDraggingRef.current) {
@@ -196,8 +196,8 @@ const QuestionCard = ({
         }}
         className={
           expanded
-            ? "relative max-h-[700px] w-[min(92vw,20rem)] sm:w-80 cursor-pointer overflow-hidden rounded-[2rem] border border-[#EDE3D6] bg-[#FBF7F0]/95 p-5 text-left text-[#2C2420] backdrop-blur-md shadow-[0_20px_60px_-40px_rgba(43,36,32,0.35)]"
-            : "relative flex h-44 w-44 sm:h-52 sm:w-52 cursor-pointer items-center justify-center overflow-visible"
+            ? "relative max-h-[600px] w-[min(80vw,16rem)] sm:w-70 cursor-pointer overflow-hidden rounded-[2rem] border border-[#EDE3D6] bg-[#FBF7F0]/95 p-5 text-left text-[#2C2420] backdrop-blur-md shadow-[0_20px_60px_-40px_rgba(43,36,32,0.35)]"
+            : "relative flex h-36 w-36 sm:h-48 sm:w-48 cursor-pointer items-center justify-center overflow-visible"
         }
       >
         
