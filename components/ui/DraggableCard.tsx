@@ -38,12 +38,16 @@ export function DraggableCard({
       const el = ref.current;
       if (!el) return;
 
+      const vw = window.visualViewport?.width ?? window.innerWidth;
+      const vh = window.visualViewport?.height ?? window.innerHeight;
+
       const rect = el.getBoundingClientRect();
+
       setConstraints({
         left: -rect.left,
         top: -rect.top,
-        right: window.innerWidth - rect.right,
-        bottom: window.innerHeight - rect.bottom,
+        right: vw - rect.right,
+        bottom: vh - rect.bottom,
       });
     };
 

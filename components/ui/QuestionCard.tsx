@@ -41,6 +41,7 @@ interface QuestionCardProps {
   onAnswerAdded: (questionId: string, answer: AnswerWithAdmin) => void;
   onApprove?: (questionId: string) => void;
   onReject?: (questionId: string) => void;
+  isDimmed?: boolean;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -72,6 +73,7 @@ const QuestionCard = ({
   onAnswerAdded,
   onApprove,
   onReject,
+  isDimmed = false,
 }: QuestionCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const isDraggingRef = useRef(false);
@@ -171,10 +173,20 @@ const QuestionCard = ({
       <motion.div
         layout
         onClick={handleCardClick}
-        animate={{ rotate: expanded ? 0 : rotation }}
+        animate={{ 
+          rotate: expanded ? 0 : rotation,
+          filter: isDimmed ? "grayscale(100%)" : "grayscale(0%)",
+          opacity: isDimmed ? 0.5 : 1,
+          scale: isDimmed ? 0.92 : 1,
+         }}
         whileHover={!expanded ? { rotate: 0, scale: 1.06 } : undefined}
         whileTap={!expanded ? { scale: 0.97 } : undefined}
-        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+        transition={{
+          rotate: { type: "spring", stiffness: 260, damping: 22 },
+          filter: { duration: 0.25 },
+          opacity: { duration: 0.25 },
+          scale: { duration: 0.25 },
+        }}
         role="button"
         tabIndex={0}
         aria-label={expanded ? "Collapse question" : "Reveal question"}

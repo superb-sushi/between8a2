@@ -19,33 +19,98 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox"
 import { Plus, X, Lock } from "lucide-react";
+import { DraggableCard } from "@/components/ui/DraggableCard";
 
-const getRandomPosition = (container?: HTMLDivElement | null) => {
-  const marginLeft = 24;
-  const minTop = 40;
-  const cardMinWidth = 320; // match desktop card width (20rem)
-  const cardMinHeight = 120; // approximate minimum height of a question card
+function DraggableSearch({
+  searchQuery,
+  setSearchQuery,
+}: {
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
 
-  if (container) {
-    const rect = container.getBoundingClientRect();
-    const maxTop = Math.max(rect.height - cardMinHeight - 8, minTop);
-    const maxLeft = Math.max(rect.width - cardMinWidth - 8, marginLeft);
+  return (
+    <DraggableCard
+      id="search"
+      style={{ top: 80, left: 5 }} // initial position
+    >
+      <motion.div
+        layout
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        onClick={() => setExpanded(true)}
+        className={`
+          flex items-center gap-2
+          rounded-full border border-white/20
+          bg-white/10 backdrop-blur-md
+          text-white shadow-lg shadow-black/20
+          transition-all
+          px-3 py-2
+          ${expanded ? "w-60 cursor-text" : "w-10 cursor-grab"}
+        `}
+      >
+        {/* SEARCH ICON ALWAYS VISIBLE */}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="shrink-0 text-white/80"
+        >
+          <path
+            d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 11-14 0 7 7 0 0114 0z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
 
-    const top = minTop + Math.floor(Math.random() * Math.max(1, maxTop - minTop + 1));
-    const left = marginLeft + Math.floor(Math.random() * Math.max(1, maxLeft - marginLeft + 1));
+        {/* INPUT ONLY WHEN EXPANDED */}
+        {expanded && (
+          <input
+            autoFocus
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search..."
+            className="flex-1 bg-transparent text-sm text-white placeholder-white/60 outline-none"
+            onBlur={() => {
+              if (!searchQuery) setExpanded(false);
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
+      </motion.div>
+    </DraggableCard>
+  );
+}
 
-    return { top, left };
+const getViewport = () => {
+  if (typeof window === "undefined") {
+    return { width: 375, height: 667 };
   }
 
-  // Fallback to viewport-based positioning
-  const vw = typeof window !== "undefined" ? window.innerWidth : 960;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 600;
+  return {
+    width: window.visualViewport?.width ?? window.innerWidth,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  };
+};
+
+const getRandomPosition = (container?: HTMLDivElement | null) => {
+  const margin = 16;
+
+  const cardWidth = 280; // IMPORTANT: match mobile card width
+  const cardHeight = 140;
+
+  const { width, height } = getViewport();
+
+  const maxLeft = Math.max(margin, width - cardWidth - margin);
+  const maxTop = Math.max(margin, height - cardHeight - margin);
 
   return {
-    top: minTop + Math.floor(Math.random() * Math.max(1, Math.floor(vh - cardMinHeight - minTop))),
-    left: marginLeft + Math.floor(Math.random() * Math.max(1, Math.floor(vw - cardMinWidth - marginLeft))),
+    top: margin + Math.random() * (maxTop - margin),
+    left: margin + Math.random() * (maxLeft - margin),
   };
-}
+};
 
 export default function Home() {
   const dragContainerRef = useRef<HTMLDivElement | null>(null);
@@ -84,6 +149,8 @@ export default function Home() {
     tags: string[];
   } | null>(null);
   const [summaryError, setSummaryError] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetch("/api/get-sessions")
@@ -547,6 +614,8 @@ export default function Home() {
     (q) => isAdmin || q.status === "APPROVED"
   ) ?? [];
 
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
   return (
     <div ref={dragContainerRef} className="relative min-h-screen">
       <GooeyPage />
@@ -672,7 +741,12 @@ export default function Home() {
             </div>
           </div>
         )}
-      </div>
+
+        {/* Collapsible, Draggable Search Bar! */}
+        <DraggableSearch
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
 
       {/* Ask anonymously — primary call to action */}
       <div className="fixed bottom-6 right-4 z-50 sm:bottom-8 sm:right-6">
@@ -1135,11 +1209,23 @@ export default function Home() {
       {/* QUESTIONS FROM ACTIVE SESSION */}
       <div>
         {visibleQuestions.map((q) => {
-          const position = questionPositions.current[q.id] ?? getRandomPosition(dragContainerRef.current);
+          const pos = questionPositions.current[q.id] ?? getRandomPosition(dragContainerRef.current);
 
           if (!questionPositions.current[q.id]) {
-            questionPositions.current[q.id] = position;
+            questionPositions.current[q.id] = {
+              top: Math.min(Math.max(pos.top, 16), window.innerHeight - 160),
+              left: Math.min(Math.max(pos.left, 16), window.innerWidth - 300),
+            };
           }
+
+          // Matches search query against all question titles, descriptions, and answers!
+          const matchesSearch =
+            !normalizedSearch ||
+            q.title.toLowerCase().includes(normalizedSearch) ||
+            q.question.toLowerCase().includes(normalizedSearch) ||
+            q.answers.some((a) =>
+              a.content.toLowerCase().includes(normalizedSearch)
+            );
 
           return (
             <QuestionCard
@@ -1150,17 +1236,19 @@ export default function Home() {
               status={q.status}
               isAnswered={q.isAnswered}
               answers={q.answers}
-              top={position.top}
-              left={position.left}
+              top={pos.top}
+              left={pos.left}
               dragConstraintsRef={dragContainerRef!}
               isAdmin={isAdmin}
               onAnswerAdded={handleAnswerAdded}
               onApprove={handleApproveQuestion}
               onReject={handleRejectQuestion}
+              isDimmed={!matchesSearch}
             />
           );
         })}
       </div>
+    </div>
     </div>
   )
 }
