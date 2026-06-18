@@ -29,6 +29,7 @@ function DraggableSearch({
   setSearchQuery: (v: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const dragged = useRef(false);
 
   return (
     <DraggableCard
@@ -38,7 +39,9 @@ function DraggableSearch({
       <motion.div
         layout
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        onClick={() => setExpanded(true)}
+        onPointerDown={() => { dragged.current = false; }}
+        onPointerMove={() => { dragged.current = true; }}
+        onClick={() => { if (!dragged.current) setExpanded(true); }}
         className={`
           flex items-center gap-2
           rounded-full border border-white/20
